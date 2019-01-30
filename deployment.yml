@@ -1,0 +1,61 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: k8s-node-check
+rules:
+  - apiGroups: ["*"]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-node-check
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-node-check
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-node-check
+subjects:
+- kind: ServiceAccount
+  name: k8s-node-check
+  namespace: kube-system
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: k8s-node-check
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: k8s-node-check
+    spec:
+      nodeSelector:
+        kubernetes.io/role: master
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      serviceAccountName: k8s-node-check
+      containers:
+      - name: k8s-node-check
+        image: onfido/k8s-node-check
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        env:
+          - name: DOGSTATSD_HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
