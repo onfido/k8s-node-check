@@ -35,6 +35,8 @@ metadata:
   namespace: kube-system
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
